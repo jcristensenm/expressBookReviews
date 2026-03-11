@@ -1,4 +1,5 @@
 const express = require('express');
+const axios = require('axios');
 let books = require("./booksdb.js");
 let isValid = require("./auth_users.js").isValid;
 let users = require("./auth_users.js").users;
@@ -38,22 +39,38 @@ public_users.get('/isbn/:isbn', function (req, res) {
   }
 });
   
-// Get book details based on author
-public_users.get('/author/:author',function (req, res) {
+// Get book details based on author (using Axios + async/await)
+public_users.get('/author/:author', async function (req, res) {
   const author = req.params.author;
-  const keys = Object.keys(books);
-  const booksByAuthor = [];
 
-  keys.forEach((key) => {
-    if (books[key].author === author) {
-      booksByAuthor.push(books[key]);
+  try {
+    // Example of using Axios to retrieve the book list asynchronously
+    const response = await axios.get('http://localhost:5000/');
+
+    // The root endpoint returns a JSON string, so parse it
+    const allBooks = typeof response.data === 'string'
+      ? JSON.parse(response.data)
+      : response.data;
+
+    const keys = Object.keys(allBooks);
+    const booksByAuthor = [];
+
+    keys.forEach((key) => {
+      if (allBooks[key].author === author) {
+        booksByAuthor.push(allBooks[key]);
+      }
+    });
+
+    if (booksByAuthor.length > 0) {
+      return res.status(200).send(JSON.stringify(booksByAuthor, null, 2));
+    } else {
+      return res.status(404).json({ message: "No books found for this author" });
     }
-  });
-
-  if (booksByAuthor.length > 0) {
-    return res.status(200).send(JSON.stringify(booksByAuthor, null, 2));
-  } else {
-    return res.status(404).json({ message: "No books found for this author" });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Error while fetching books by author",
+      error: error.message,
+    });
   }
 });
 
@@ -91,3 +108,4 @@ public_users.get('/review/:isbn',function (req, res) {
 });
 
 module.exports.general = public_users;
+
